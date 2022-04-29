@@ -91,12 +91,12 @@ var roles = {
 };
 
 var priorities = [
-	MELEE_DEFENDER,
-	STATIC_HARVESTER,
-	TRANSPORTER,
-	MOBILE_HARVESTER,
-	UPGRADER,
-	BUILDER,
+	"MELEE_DEFENDER",
+	"STATIC_HARVESTER",
+	"TRANSPORTER",
+	"MOBILE_HARVESTER",
+	"UPGRADER",
+	"BUILDER",
 ];
 
 function getCreepBody(role, spawn) {
@@ -143,7 +143,8 @@ function createCreeps() {
 				}
 			}
 
-			for (var name in priorities) {
+			for (var i in priorities) {
+				var name = priorities[i];
 				var role = roles[name];
 
 				if (role.count(room) < room.memory.roles[name]) {
@@ -162,19 +163,27 @@ function createCreeps() {
 
 					var body = getCreepBody(role, spawn);
 
-					var res = spawn.spawnCreep(body, name + "-" + Game.time, {
-						memory: {
-							spawning: true,
-							role: name,
-							workPhase: 0,
-							home: room.name,
-						},
-					});
+					var result = spawn.spawnCreep(
+						body,
+						name + "-" + Game.time,
+						{
+							memory: {
+								spawning: true,
+								role: name,
+								workPhase: 0,
+								home: room.name,
+							},
+						}
+					);
 
-					room.visual.text(res, spawn.pos, {
+					room.visual.text(result, spawn.pos, {
 						color: "red",
 						font: 0.8,
 					});
+
+					if (result == OK) {
+						room.memory.roles[name]++;
+					}
 
 					// Spawn will now be busy and removed from the list of spawns, which will break from the next role check if it's the last one
 				}
@@ -187,6 +196,8 @@ function runCreeps() {
 	for (var name in Game.creeps) {
 		var creep = Game.creeps[name];
 
+		if (creep.memory.spawning) creep.memory.spawning = false;
+
 		var role = eval(creep.memory.role);
 		role.run();
 	}
@@ -194,4 +205,5 @@ function runCreeps() {
 
 module.exports = {
 	runCreeps: runCreeps,
+	createCreeps: createCreeps,
 };
