@@ -36,6 +36,10 @@ function displayRoomPlan(roomName, display = true) {
 			vis.circle(x, y, { radius: value / 25 });
 		}
 	}
+
+	vis.text("c", roomPlan.bestSpot.pos, {
+		color: "red",
+	});
 }
 /**
  * Need to create a distance transform using the chessboard distance
@@ -83,7 +87,50 @@ function distanceTransform(roomName) {
 function createRoomPlan(roomName) {
 	var dt = distanceTransform(roomName);
 
+	var max = 0;
+	var positions = [];
+
+	for (let x = 0; x < roomSize; x++) {
+		for (let y = 0; y < roomSize; y++) {
+			var value = dt._bits[y + x * roomSize];
+			if (value > max) max = value;
+		}
+	}
+
+	for (let x = 0; x < roomSize; x++) {
+		for (let y = 0; y < roomSize; y++) {
+			var value = dt._bits[y + x * roomSize];
+			if (value == max) {
+				positions.push({ x: x, y: y });
+			}
+		}
+	}
+
+	var bestPosition;
+	var distance = roomSize * roomSize;
+
+	for (var i in positions) {
+		var pos = positions[i];
+		var roomPos = new RoomPosition(pos.x, pos.y, roomName);
+
+		console.log(JSON.stringify(roomPos));
+
+		var path = roomPos.findPathTo(Game.rooms[roomName].controller.pos)
+			.length;
+
+		console.log(path);
+
+		if (path < distance) {
+			bestPosition = pos;
+			distance = path;
+		}
+	}
+
 	return {
+		bestSpot: {
+			pos: new RoomPosition(bestPosition.x, bestPosition.y, roomName),
+			value: max,
+		},
 		dt: dt,
 	};
 }
