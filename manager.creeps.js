@@ -180,7 +180,7 @@ function createCreeps() {
 					},
 				});
 
-				if (spawns.size == 0) {
+				if (spawns.length == 0) {
 					// All spawns are busy
 					break;
 				}

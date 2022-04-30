@@ -33,7 +33,7 @@ module.exports.loop = function () {
 	creepUtilities.clearDeadCreeps();
 	creepManager.createCreeps();
 
-	if (Game.cpu.bucket > 5000) {
+	if (Game.cpu.bucket > 10000) {
 		Game.cpu.generatePixel();
 	}
 };
