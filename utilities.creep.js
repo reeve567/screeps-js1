@@ -1,7 +1,8 @@
 module.exports.getCost = function (creepBody) {
 	var cost = 0;
 
-	for (var part in creepBody) {
+	for (var i in creepBody) {
+		var part = creepBody[i];
 		cost += BODYPART_COST[part];
 	}
 
