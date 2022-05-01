@@ -1,4 +1,5 @@
 var creepUtilities = require("utilities.creep");
+var roomUtilities = require("utilities.room");
 
 var roles = {
 	// Mines energy, then puts it in some kind of storage
@@ -27,15 +28,15 @@ var roles = {
 				let room = Game.rooms[creep.memory.home];
 				if (room.memory.sources == undefined) {
 					room.memory.sources = [];
-					let sourceSpots =
-						Memory.roomPlans[creep.memory.home].sourceSpots;
+					let roomPlan = roomUtilities.getRoomPlan(creep.memory.home);
+					let sourceSpots = roomPlan.sourceSpots;
 
 					for (let i in sourceSpots) {
 						let source = sourceSpots[i];
 
 						room.memory.sources.push({
 							owner: null,
-							position: source.position,
+							source: source.id,
 							bestPosition: source.bestPosition,
 						});
 					}
@@ -47,22 +48,33 @@ var roles = {
 					if (source.owner == null) {
 						source.owner = creep.name;
 						creep.memory.source = i;
+						break;
 					}
 				}
 			}
-			let room = Game.rooms[creep.home];
+			let room = Game.rooms[creep.memory.home];
 			let sourceMem = room.memory.sources[creep.memory.source];
 
-			if (creep.pos.isEqualTo(sourceMem.bestPosition)) {
-				let source = sourceMem.position.lookFor(LOOK_SOURCES);
-				creep.harvest(source);
+			if (
+				creep.pos.x == sourceMem.bestPosition.x &&
+				creep.pos.y == sourceMem.bestPosition.y
+			) {
+				let source = Game.getObjectById(sourceMem.source);
+				let ret = creep.harvest(source);
+			} else {
+				let ret = creep.moveTo(
+					sourceMem.bestPosition.x,
+					sourceMem.bestPosition.y
+				);
 			}
 		},
 		bodyType: [MOVE, CARRY, WORK],
 		specialBody: [WORK],
 		count: function (room) {
-			if (room.controller.level > 2) {
-				return room.memory.sources;
+			if (room.controller.level >= 2) {
+				if (room.memory.sources == undefined) {
+					return room.find(FIND_SOURCES).length;
+				} else return room.memory.sources.length;
 			} else return 0;
 		},
 	},
@@ -152,6 +164,9 @@ var roles = {
 		run: function (creep) {},
 		bodyType: [MOVE, CARRY, WORK],
 		count: function (room) {
+			// if (room.controller.level > 1) {
+			// 	return 2;
+			// } else
 			return 0;
 		},
 	},

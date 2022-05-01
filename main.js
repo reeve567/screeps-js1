@@ -33,7 +33,7 @@ module.exports.loop = function () {
 	creepUtilities.clearDeadCreeps();
 
 	// only try and make new creeps every once in a while
-	if (Game.time % 100) creepManager.createCreeps();
+	if (Game.time % 100 == 0) creepManager.createCreeps();
 
 	if (Game.cpu.bucket == 10000) {
 		Game.cpu.generatePixel();

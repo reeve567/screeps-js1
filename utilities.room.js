@@ -150,10 +150,23 @@ function createRoomPlan(roomName) {
 		}
 	}
 
+	// Better way to do the roads to sources once it's affordable:
+	// CostMatrix for all tiles, letting the walls be included with a higher cost
+
 	let room = Game.rooms[roomName];
 	let sources = room.find(FIND_SOURCES);
 	let sourceSpots = [];
 	let terrain = room.getTerrain();
+
+	let cost = new PathFinder.CostMatrix();
+
+	for (let x = 1; x < 50; x++) {
+		for (let y = 1; y < 50; y++) {
+			if (terrain.get(x, y) == TERRAIN_MASK_WALL) {
+				cost.set(x, y, 4.0);
+			}
+		}
+	}
 
 	for (let i in sources) {
 		let source = sources[i];
@@ -176,6 +189,7 @@ function createRoomPlan(roomName) {
 						continue;
 
 					let path = room.controller.pos.findPathTo(minePos);
+
 					let dist = path.length;
 
 					if (dist < min) {
