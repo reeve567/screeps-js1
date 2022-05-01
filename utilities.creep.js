@@ -18,7 +18,63 @@ module.exports.clearDeadCreeps = function () {
 			var role = mem.role;
 			room.memory.roles[role]--;
 
+			if (role == "STATIC_HARVESTER") {
+				room.memory.sources[mem.source].owner = null;
+			}
+
 			delete Memory.creeps[name];
 		}
 	}
+};
+
+module.exports.findEnergy = function (creep) {
+	let energyCap = creep.store.getCapacity(RESOURCE_ENERGY);
+
+	let ret = null;
+
+	// try looking for dropped energy
+	if (ret == null) {
+		let ret1 = creep.room.find(FIND_DROPPED_RESOURCES, {
+			filter: function (object) {
+				return (
+					object.resourceType == RESOURCE_ENERGY &&
+					object.amount > energyCap
+				);
+			},
+		});
+
+		if (ret1.length > 0) {
+			let ret2 = _.sortBy(ret1, [
+				function (o) {
+					o.amount;
+				},
+			]);
+
+			ret = ret2[ret2.length - 1];
+		}
+	}
+
+	// try looking at storages
+	if (ret == null) {
+		let ret1 = creep.room.find(FIND_STRUCTURES, {
+			filter: function (structure) {
+				return (
+					structure instanceof StructureContainer &&
+					structure.store.energy > energyCap
+				);
+			},
+		});
+
+		if (ret1.length > 0) {
+			let ret2 = _.sortBy(ret1, [
+				function (o) {
+					o.store.energy;
+				},
+			]);
+
+			ret = ret2[ret2.length - 1];
+		}
+	}
+
+	return ret;
 };

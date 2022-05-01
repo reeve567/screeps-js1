@@ -37,9 +37,22 @@ function displayRoomPlan(roomName, display = true) {
 		}
 	}
 
-	vis.text("c", roomPlan.bestSpot.pos, {
-		color: "red",
+	vis.text("bc", roomPlan.bestSpot.pos, {
+		color: "blue",
 	});
+
+	for (let i in roomPlan.sourceSpots) {
+		let sourceSpot = roomPlan.sourceSpots[i];
+
+		vis.text("mc", sourceSpot.bestPosition, {
+			color: "blue",
+		});
+
+		vis.poly(sourceSpot.path, {
+			stroke: "#ddd",
+			strokeWidth: 0.2,
+		});
+	}
 }
 /**
  * Need to create a distance transform using the chessboard distance
@@ -47,7 +60,8 @@ function displayRoomPlan(roomName, display = true) {
 function distanceTransform(roomName) {
 	let topDownPass = new PathFinder.CostMatrix();
 
-	let terrain = Game.rooms[roomName].getTerrain();
+	let room = Game.rooms[roomName];
+	let terrain = room.getTerrain();
 
 	for (let y = 0; y < 50; ++y) {
 		for (let x = 0; x < 50; ++x) {
@@ -68,8 +82,8 @@ function distanceTransform(roomName) {
 		}
 	}
 
-	for (let y = 49; y >= 0; --y) {
-		for (let x = 49; x >= 0; --x) {
+	for (let y = 49; y > 0; --y) {
+		for (let x = 49; x > 0; --x) {
 			let value = Math.min(
 				topDownPass.get(x, y),
 				topDownPass.get(x + 1, y + 1) + 1,
@@ -77,7 +91,21 @@ function distanceTransform(roomName) {
 				topDownPass.get(x - 1, y + 1) + 1,
 				topDownPass.get(x + 1, y) + 1
 			);
+
 			topDownPass.set(x, y, value);
+		}
+	}
+
+	for (let y = 49; y > 0; --y) {
+		for (let x = 49; x > 0; --x) {
+			if (topDownPass.get(x, y) > 2) {
+				let dist = room.controller.pos.findPathTo(x, y).length;
+				topDownPass.set(
+					x,
+					y,
+					Math.max(topDownPass.get(x, y) - Math.floor(dist / 15), 0)
+				);
+			}
 		}
 	}
 
@@ -106,19 +134,15 @@ function createRoomPlan(roomName) {
 		}
 	}
 
-	var bestPosition;
-	var distance = roomSize * roomSize;
+	let bestPosition;
+	let distance = roomSize * roomSize;
 
-	for (var i in positions) {
+	for (let i in positions) {
 		var pos = positions[i];
 		var roomPos = new RoomPosition(pos.x, pos.y, roomName);
 
-		console.log(JSON.stringify(roomPos));
-
 		var path = roomPos.findPathTo(Game.rooms[roomName].controller.pos)
 			.length;
-
-		console.log(path);
 
 		if (path < distance) {
 			bestPosition = pos;
@@ -126,11 +150,56 @@ function createRoomPlan(roomName) {
 		}
 	}
 
+	let room = Game.rooms[roomName];
+	let sources = room.find(FIND_SOURCES);
+	let sourceSpots = [];
+	let terrain = room.getTerrain();
+
+	for (let i in sources) {
+		let source = sources[i];
+		let pos = source.pos;
+
+		let bestPosition;
+		let bestPath;
+		let min = 2500;
+
+		for (let x = -1; x <= 1; x++) {
+			for (let y = -1; y <= 1; y++) {
+				if (x != 0 || y != 0) {
+					let minePos = new RoomPosition(
+						pos.x + x,
+						pos.y + y,
+						roomName
+					);
+
+					if (terrain.get(minePos.x, minePos.y) == TERRAIN_MASK_WALL)
+						continue;
+
+					let path = room.controller.pos.findPathTo(minePos);
+					let dist = path.length;
+
+					if (dist < min) {
+						min = dist;
+						bestPath = path;
+						bestPosition = minePos;
+					}
+				}
+			}
+		}
+
+		sourceSpots.push({
+			bestPosition: bestPosition,
+			path: bestPath,
+			position: pos,
+		});
+	}
+
 	return {
 		bestSpot: {
 			pos: new RoomPosition(bestPosition.x, bestPosition.y, roomName),
 			value: max,
 		},
+		sourceSpots: sourceSpots,
 		dt: dt,
 	};
 }
