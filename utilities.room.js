@@ -263,5 +263,5 @@ module.exports = {
 	getRoomPlan: getRoomPlan,
 	displayRoomPlan: displayRoomPlan,
 	createRoomPlan: createRoomPlan,
-	spawnFrequency: 50,
+	spawnFrequency: 25,
 };

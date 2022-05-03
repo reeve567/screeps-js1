@@ -37,8 +37,10 @@ module.exports.loop = function () {
 
 	creepUtilities.clearDeadCreeps();
 
+	// TODO: change creep spawning to loop over spawners instead of looping over roles, each spawner can loop over roles individually
 	// only try and make new creeps every once in a while
-	if (Game.time % 100 == 0) creepManager.createCreeps();
+	if (Game.time % roomUtilities.spawnFrequency == 0)
+		creepManager.createCreeps();
 
 	if (Game.cpu.bucket == 10000) {
 		Game.cpu.generatePixel();

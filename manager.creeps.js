@@ -174,6 +174,8 @@ var roles = {
 						creep.moveTo(spawns[0], RESOURCE_ENERGY);
 					} else if (res == ERR_NOT_ENOUGH_ENERGY) {
 						creep.memory.workPhase = 0;
+					} else {
+						console.log(res);
 					}
 					return;
 				}
@@ -202,14 +204,12 @@ var roles = {
 				getEnergy(creep);
 			}
 		},
-		bodyType: [MOVE, CARRY],
+		bodyType: [MOVE, CARRY, CARRY],
 		count: function (room) {
-			if (room.controller.level == 2) {
-				return 1;
-			} else if (room.controller.level == 3) {
-				return room.memory.sources.length;
-			} else if (room.controller.level > 3) {
+			if (room.controller.level > 3) {
 				return room.memory.sources.length + 1;
+			} else if (room.controller.level >= 2) {
+				return 1;
 			} else return 0;
 		},
 	},
@@ -393,7 +393,7 @@ var roles = {
 		bodyType: [MOVE, CARRY, WORK],
 		count: function (room) {
 			if (room.controller.level > 1) {
-				return Math.floor(room.controller.level / 2);
+				return Math.floor(room.controller.level / 2) + 1;
 			} else return 0;
 		},
 	},
@@ -444,6 +444,11 @@ var priorities = [
 
 function getEnergy(creep) {
 	let find = creepUtilities.findEnergy(creep);
+
+	if (creep.store.energy == creep.store.getCapacity(RESOURCE_ENERGY)) {
+		creep.memory.workPhase = 1;
+		return;
+	}
 
 	if (find != null) {
 		if (find instanceof Structure || find instanceof Tombstone) {
@@ -539,6 +544,9 @@ function createCreeps() {
 			var name = priorities[i];
 			var role = roles[name];
 
+			console.log(name);
+			console.log(role.count(room));
+
 			if (role.count(room) > room.memory.roles[name]) {
 				var spawns = room.find(FIND_MY_SPAWNS, {
 					filter: function (spawn) {
@@ -557,7 +565,7 @@ function createCreeps() {
 
 				var result = spawn.spawnCreep(
 					body,
-					name + "-" + Game.time / 100,
+					name + "-" + Game.time / roomUtilities.spawnFrequency,
 					{
 						memory: {
 							role: name,
@@ -574,9 +582,12 @@ function createCreeps() {
 
 				if (result == OK) {
 					room.memory.roles[name]++;
+					break;
 				} else if (result == ERR_NOT_ENOUGH_ENERGY) {
 					room.memory.nextCreep = name;
 					break;
+				} else {
+					console.log(result);
 				}
 
 				// Spawn will now be busy and removed from the list of spawns, which will break from the next role check if it's the last one
