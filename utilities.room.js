@@ -205,6 +205,7 @@ function createRoomPlan(roomName) {
 			bestPosition: bestPosition,
 			path: bestPath,
 			position: pos,
+			id: source.id,
 		});
 	}
 

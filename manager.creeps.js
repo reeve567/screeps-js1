@@ -24,24 +24,25 @@ var roles = {
 	// Stays at a source to mine, dropping energy on the floor or in a storage at their body
 	STATIC_HARVESTER: {
 		run: function (creep) {
-			if (creep.memory.source == undefined) {
-				let room = Game.rooms[creep.memory.home];
-				if (room.memory.sources == undefined) {
-					room.memory.sources = [];
-					let roomPlan = roomUtilities.getRoomPlan(creep.memory.home);
-					let sourceSpots = roomPlan.sourceSpots;
+			let room = Game.rooms[creep.memory.home];
 
-					for (let i in sourceSpots) {
-						let source = sourceSpots[i];
+			if (room.memory.sources == undefined) {
+				room.memory.sources = [];
+				let roomPlan = roomUtilities.getRoomPlan(creep.memory.home);
+				let sourceSpots = roomPlan.sourceSpots;
 
-						room.memory.sources.push({
-							owner: null,
-							source: source.id,
-							bestPosition: source.bestPosition,
-						});
-					}
+				for (let i in sourceSpots) {
+					let source = sourceSpots[i];
+
+					room.memory.sources.push({
+						owner: null,
+						source: source.id,
+						bestPosition: source.bestPosition,
+					});
 				}
+			}
 
+			if (creep.memory.source == undefined) {
 				for (let i in room.memory.sources) {
 					let source = room.memory.sources[i];
 
@@ -52,7 +53,7 @@ var roles = {
 					}
 				}
 			}
-			let room = Game.rooms[creep.memory.home];
+
 			let sourceMem = room.memory.sources[creep.memory.source];
 
 			if (
@@ -61,6 +62,7 @@ var roles = {
 			) {
 				let source = Game.getObjectById(sourceMem.source);
 				let ret = creep.harvest(source);
+				console.log(ret);
 			} else {
 				let ret = creep.moveTo(
 					sourceMem.bestPosition.x,
@@ -68,7 +70,7 @@ var roles = {
 				);
 			}
 		},
-		bodyType: [MOVE, CARRY, WORK],
+		bodyType: [MOVE, WORK],
 		specialBody: [WORK],
 		count: function (room) {
 			if (room.controller.level >= 2) {
