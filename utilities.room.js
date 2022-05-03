@@ -150,6 +150,14 @@ function createRoomPlan(roomName) {
 		}
 	}
 
+	// start figuring out where buildings go
+
+	let links = [new RoomPosition(bestPosition.x, bestPosition.y, roomName)];
+	let center = links[0];
+	let containers = [];
+	let extensions = [];
+	let towers = [];
+
 	// Better way to do the roads to sources once it's affordable:
 	// CostMatrix for all tiles, letting the walls be included with a higher cost
 
@@ -158,15 +166,15 @@ function createRoomPlan(roomName) {
 	let sourceSpots = [];
 	let terrain = room.getTerrain();
 
-	let cost = new PathFinder.CostMatrix();
-
-	for (let x = 1; x < 50; x++) {
-		for (let y = 1; y < 50; y++) {
-			if (terrain.get(x, y) == TERRAIN_MASK_WALL) {
-				cost.set(x, y, 4.0);
-			}
-		}
-	}
+	// let cost = new PathFinder.CostMatrix();
+	//
+	// for (let x = 1; x < 50; x++) {
+	// 	for (let y = 1; y < 50; y++) {
+	// 		if (terrain.get(x, y) == TERRAIN_MASK_WALL) {
+	// 			cost.set(x, y, 4.0);
+	// 		}
+	// 	}
+	// }
 
 	for (let i in sources) {
 		let source = sources[i];
@@ -201,20 +209,53 @@ function createRoomPlan(roomName) {
 			}
 		}
 
+		containers.push(bestPosition);
+
 		sourceSpots.push({
 			bestPosition: bestPosition,
 			path: bestPath,
 			position: pos,
+			id: source.id,
 		});
+	}
+
+	// bunker area
+	// TODO: deal with smaller areas that wont fit a 5x5
+	for (let x = -2; x <= 2; x++) {
+		for (let y = -2; y <= 2; y++) {
+			if (Math.abs(x - y) == 1) {
+				extensions.push(
+					new RoomPosition(center.x + x, center.y + y, roomName)
+				);
+			}
+
+			if (Math.abs(x) == 2 && y == 0) {
+				containers.push(
+					new RoomPosition(center.x + x, center.y, roomName)
+				);
+			}
+
+			if (Math.abs(x) == 2 && Math.abs(y) == 2) {
+				towers.push(
+					new RoomPosition(center.x + x, center.y + y, roomName)
+				);
+			}
+		}
 	}
 
 	return {
 		bestSpot: {
-			pos: new RoomPosition(bestPosition.x, bestPosition.y, roomName),
+			pos: center,
 			value: max,
 		},
 		sourceSpots: sourceSpots,
 		dt: dt,
+		buildings: {
+			links: links,
+			extensions: extensions,
+			containers: containers,
+			towers: towers,
+		},
 	};
 }
 
@@ -222,4 +263,5 @@ module.exports = {
 	getRoomPlan: getRoomPlan,
 	displayRoomPlan: displayRoomPlan,
 	createRoomPlan: createRoomPlan,
+	spawnFrequency: 50,
 };

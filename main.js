@@ -26,6 +26,10 @@ module.exports.loop = function () {
 	// 3. Towers
 	// 4. Room plan
 
+	Memory.creepIn =
+		roomUtilities.spawnFrequency -
+		(Game.time % roomUtilities.spawnFrequency);
+
 	roomManager.runVisuals();
 
 	creepManager.runCreeps();

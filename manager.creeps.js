@@ -1,6 +1,80 @@
 var creepUtilities = require("utilities.creep");
 var roomUtilities = require("utilities.room");
 
+var buildPriority = [
+	"extensions",
+	"containers",
+	"towers",
+	"links",
+	"storage",
+	"spawns",
+];
+
+var buildingListMap = {
+	containers: STRUCTURE_CONTAINER,
+	extensions: STRUCTURE_EXTENSION,
+	towers: STRUCTURE_TOWER,
+	storage: STRUCTURE_STORAGE,
+	links: STRUCTURE_LINK,
+	extractor: STRUCTURE_EXTRACTOR,
+	labs: STRUCTURE_LAB,
+	terminal: STRUCTURE_TERMINAL,
+	factory: STRUCTURE_FACTORY,
+	observer: STRUCTURE_OBSERVER,
+	power_spawn: STRUCTURE_POWER_SPAWN,
+	nuker: STRUCTURE_NUKER,
+};
+
+var controllerBuildings = {
+	1: {
+		containers: 5,
+		spawns: 1,
+	},
+	2: {
+		extensions: 5,
+	},
+	3: {
+		extensions: 10,
+		towers: 1,
+	},
+	4: {
+		extensions: 20,
+		towers: 1,
+		storage: 1,
+	},
+	5: {
+		extensions: 30,
+		towers: 2,
+		links: 2,
+	},
+	6: {
+		extensions: 40,
+		links: 3,
+		extractor: 1,
+		labs: 3,
+		terminal: 1,
+	},
+	7: {
+		spawns: 2,
+		extensions: 50,
+		towers: 3,
+		links: 4,
+		labs: 6,
+		factory: 1,
+	},
+	8: {
+		spawns: 3,
+		extensions: 60,
+		towers: 6,
+		links: 6,
+		labs: 10,
+		observer: 1,
+		power_spawn: 1,
+		nuker: 1,
+	},
+};
+
+// TODO: Make the MOBILE_HARVESTER actually work for Controller level 2, and also make the static only start on Controller 3
 var roles = {
 	// Mines energy, then puts it in some kind of storage
 	MOBILE_HARVESTER: {
@@ -24,24 +98,25 @@ var roles = {
 	// Stays at a source to mine, dropping energy on the floor or in a storage at their body
 	STATIC_HARVESTER: {
 		run: function (creep) {
-			if (creep.memory.source == undefined) {
-				let room = Game.rooms[creep.memory.home];
-				if (room.memory.sources == undefined) {
-					room.memory.sources = [];
-					let roomPlan = roomUtilities.getRoomPlan(creep.memory.home);
-					let sourceSpots = roomPlan.sourceSpots;
+			let room = Game.rooms[creep.memory.home];
 
-					for (let i in sourceSpots) {
-						let source = sourceSpots[i];
+			if (room.memory.sources == undefined) {
+				room.memory.sources = [];
+				let roomPlan = roomUtilities.getRoomPlan(creep.memory.home);
+				let sourceSpots = roomPlan.sourceSpots;
 
-						room.memory.sources.push({
-							owner: null,
-							source: source.id,
-							bestPosition: source.bestPosition,
-						});
-					}
+				for (let i in sourceSpots) {
+					let source = sourceSpots[i];
+
+					room.memory.sources.push({
+						owner: null,
+						source: source.id,
+						bestPosition: source.bestPosition,
+					});
 				}
+			}
 
+			if (creep.memory.source == undefined) {
 				for (let i in room.memory.sources) {
 					let source = room.memory.sources[i];
 
@@ -52,7 +127,7 @@ var roles = {
 					}
 				}
 			}
-			let room = Game.rooms[creep.memory.home];
+
 			let sourceMem = room.memory.sources[creep.memory.source];
 
 			if (
@@ -68,7 +143,7 @@ var roles = {
 				);
 			}
 		},
-		bodyType: [MOVE, CARRY, WORK],
+		bodyType: [MOVE, WORK],
 		specialBody: [WORK],
 		count: function (room) {
 			if (room.controller.level >= 2) {
@@ -79,11 +154,61 @@ var roles = {
 		},
 	},
 	TRANSPORTER: {
-		run: function (creep) {},
+		run: function (creep) {
+			if (creep.memory.workPhase == 1) {
+				let room = Game.rooms[creep.memory.home];
+
+				let spawns = room.find(FIND_MY_STRUCTURES, {
+					filter: function (structures) {
+						return (
+							structure instanceof StructureSpawn &&
+							structure.store.energy <
+								structure.store.getCapacity(RESOURCE_ENERGY)
+						);
+					},
+				});
+
+				if (spawns.length > 0) {
+					let res = creep.transfer(spawns[0]);
+					if (res == ERR_NOT_IN_RANGE) {
+						creep.moveTo(spawns[0], RESOURCE_ENERGY);
+					} else if (res == ERR_NOT_ENOUGH_ENERGY) {
+						creep.memory.workPhase = 0;
+					}
+					return;
+				}
+
+				let extensions = room.find(FIND_MY_STRUCTURES, {
+					filter: function (structure) {
+						return (
+							structure instanceof StructureExtension &&
+							structure.store.energy <
+								structure.store.getCapacity(RESOURCE_ENERGY)
+						);
+					},
+				});
+
+				if (extensions.length > 0) {
+					let res = creep.transfer(extensions[0]);
+					if (res == ERR_NOT_IN_RANGE) {
+						creep.moveTo(extensions[0], RESOURCE_ENERGY);
+					} else if (res == ERR_NOT_ENOUGH_ENERGY) {
+						creep.memory.workPhase = 0;
+					}
+					return;
+				}
+			} else if (creep.memory.workPhase == 0) {
+				getEnergy(creep);
+			}
+		},
 		bodyType: [MOVE, CARRY],
 		count: function (room) {
-			if (room.controller.level > 3) {
-				return room.memory.sources + 1;
+			if (room.controller.level == 2) {
+				return 1;
+			} else if (room.controller.level == 3) {
+				return room.memory.sources.length;
+			} else if (room.controller.level > 3) {
+				return room.memory.sources.length + 1;
 			} else return 0;
 		},
 	},
@@ -100,74 +225,138 @@ var roles = {
 					creep.memory.workPhase = 0;
 				}
 			} else if (creep.memory.workPhase == 0) {
-				let find = creepUtilities.findEnergy(creep);
-
-				if (find != null) {
-					if (
-						find instanceof Structure ||
-						find instanceof Tombstone
-					) {
-						let result = creep.withdraw(find, RESOURCE_ENERGY);
-
-						if (result == ERR_NOT_IN_RANGE) {
-							creep.moveTo(find);
-						} else if (result == OK) {
-							if (
-								creep.store.energy ==
-								creep.store.getCapacity(RESOURCE_ENERGY)
-							) {
-								creep.memory.workPhase = 1;
-							}
-						}
-					} else {
-						let result = creep.pickup(find);
-
-						if (result == ERR_NOT_IN_RANGE) {
-							creep.moveTo(find);
-						} else if (result == ERR_FULL) {
-							creep.memory.workPhase = 1;
-						} else if (result == OK) {
-							if (
-								creep.store.energy ==
-								creep.store.getCapacity(RESOURCE_ENERGY)
-							) {
-								creep.memory.workPhase = 1;
-							}
-						}
-					}
-				} else {
-					var source = creep.pos.findClosestByPath(FIND_SOURCES);
-
-					var result = creep.harvest(source);
-					if (result == ERR_NOT_IN_RANGE) {
-						creep.moveTo(source);
-					} else if (result == OK) {
-						if (
-							creep.store.energy ==
-							creep.store.getCapacity(RESOURCE_ENERGY)
-						) {
-							creep.memory.workPhase = 1;
-						}
-					}
-				}
+				getEnergy(creep);
 			}
 		},
 		bodyType: [MOVE, CARRY, WORK],
 		count: function (room) {
 			if (room.controller.level == 1) {
 				return 4;
-			} else return 5;
+			} else return 3;
 		},
 	},
 	// Looks for energy to use, and builds any construction stites in the room
 	BUILDER: {
-		run: function (creep) {},
+		run: function (creep) {
+			if (creep.memory.workPhase == 1) {
+				var room = Game.rooms[creep.memory.home];
+
+				if (
+					creep.memory.project == undefined ||
+					creep.memory.project == null
+				) {
+					let res = creep.room.find(FIND_MY_CONSTRUCTION_SITES);
+
+					if (res.length == 0) {
+						let roomPlan = roomUtilities.getRoomPlan(
+							creep.room.name
+						);
+
+						let max = {};
+
+						for (let type in roomPlan.buildings) {
+							max[type] = 0;
+						}
+
+						for (let i = 1; i <= room.controller.level; i++) {
+							for (let type in roomPlan.buildings) {
+								if (controllerBuildings[i] != undefined) {
+									max = controllerBuildings[i];
+								}
+							}
+						}
+
+						console.log(JSON.stringify(max));
+
+						for (let i in buildPriority) {
+							let type = buildPriority[i];
+
+							let res = creep.room.find(FIND_MY_STRUCTURES, {
+								filter: function (structure) {
+									return (
+										structure.type == buildingListMap[type]
+									);
+								},
+							}).length;
+
+							res += creep.room.find(FIND_MY_CONSTRUCTION_SITES, {
+								filter: function (structure) {
+									return (
+										structure.type == buildingListMap[type]
+									);
+								},
+							}).length;
+
+							console.log(type);
+							console.log(res);
+
+							if (res < max[type]) {
+								let newProjPos =
+									roomPlan.buildings.extensions[res];
+
+								if (newProjPos != undefined) {
+									let ret = creep.room.createConstructionSite(
+										newProjPos.x,
+										newProjPos.y,
+										buildingListMap[type],
+										type + "-" + res
+									);
+
+									if (ret == OK) {
+										let constructionSites = creep.room.lookForAt(
+											LOOK_CONSTRUCTION_SITES,
+											newProjPos.x,
+											newProjPos.y
+										);
+
+										for (let i in constructionSites) {
+											let constructionSite =
+												constructionSites[i];
+
+											if (
+												constructionSite.type ==
+												buildingListMap[type]
+											) {
+												creep.memory.project =
+													constructionSite.id;
+											}
+										}
+									} else {
+										console.log(ret);
+									}
+
+									break;
+								}
+							}
+						}
+					} else {
+						creep.memory.project = res[0].id;
+					}
+				}
+
+				let project = Game.getObjectById(creep.memory.project);
+
+				if (project == null) {
+					creep.memory.project = null;
+					return;
+				}
+
+				let res = creep.build(project);
+
+				if (res == ERR_NOT_IN_RANGE) {
+					creep.moveTo(project);
+				} else if (res == ERR_NOT_ENOUGH_ENERGY) {
+					creep.memory.workPhase = 0;
+				}
+			} else if (creep.memory.workPhase == 0) {
+				getEnergy(creep);
+			}
+		},
 		bodyType: [MOVE, CARRY, WORK],
 		count: function (room) {
-			// if (room.controller.level > 1) {
-			// 	return 2;
-			// } else
-			return 0;
+			if (room.controller.level > 1) {
+				return Math.floor(room.controller.level / 2);
+			} else return 0;
 		},
 	},
 	// Moves to another room to claim the Controller
@@ -214,6 +403,55 @@ var priorities = [
 	"UPGRADER",
 	"BUILDER",
 ];
+
+function getEnergy(creep) {
+	let find = creepUtilities.findEnergy(creep);
+
+	if (find != null) {
+		if (find instanceof Structure || find instanceof Tombstone) {
+			let result = creep.withdraw(find, RESOURCE_ENERGY);
+
+			if (result == ERR_NOT_IN_RANGE) {
+				creep.moveTo(find);
+			} else if (result == OK) {
+				if (
+					creep.store.energy ==
+					creep.store.getCapacity(RESOURCE_ENERGY)
+				) {
+					creep.memory.workPhase = 1;
+				}
+			}
+		} else {
+			let result = creep.pickup(find);
+
+			if (result == ERR_NOT_IN_RANGE) {
+				creep.moveTo(find);
+			} else if (result == ERR_FULL) {
+				creep.memory.workPhase = 1;
+			} else if (result == OK) {
+				if (
+					creep.store.energy ==
+					creep.store.getCapacity(RESOURCE_ENERGY)
+				) {
+					creep.memory.workPhase = 1;
+				}
+			}
+		}
+	} else {
+		var source = creep.pos.findClosestByPath(FIND_SOURCES);
+
+		var result = creep.harvest(source);
+		if (result == ERR_NOT_IN_RANGE) {
+			creep.moveTo(source);
+		} else if (result == OK) {
+			if (
+				creep.store.energy == creep.store.getCapacity(RESOURCE_ENERGY)
+			) {
+				creep.memory.workPhase = 1;
+			}
+		}
+	}
+}
 
 function getCreepBody(role, spawn) {
 	var baseCost = creepUtilities.getCost(role.bodyType);
@@ -299,6 +537,9 @@ function createCreeps() {
 
 				if (result == OK) {
 					room.memory.roles[name]++;
+				} else if (result == ERR_NOT_ENOUGH_ENERGY) {
+					room.memory.nextCreep = name;
+					break;
 				}
 
 				// Spawn will now be busy and removed from the list of spawns, which will break from the next role check if it's the last one
