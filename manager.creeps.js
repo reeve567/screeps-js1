@@ -136,6 +136,7 @@ var roles = {
 			) {
 				let source = Game.getObjectById(sourceMem.source);
 				let ret = creep.harvest(source);
+				console.log(ret);
 			} else {
 				let ret = creep.moveTo(
 					sourceMem.bestPosition.x,
