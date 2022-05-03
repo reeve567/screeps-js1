@@ -12,7 +12,7 @@ module.exports.getCost = function (creepBody) {
 module.exports.clearDeadCreeps = function () {
 	for (var name in Memory.creeps) {
 		var mem = Memory.creeps[name];
-		if (!Game.creeps[name] && !mem.spawning) {
+		if (!Game.creeps[name]) {
 			var room = Game.rooms[mem.home];
 
 			var role = mem.role;

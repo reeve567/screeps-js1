@@ -1,6 +1,7 @@
 /*
  * Possible optimizations
  * - Use typeof and check for whether you have the room name or room object so you don't have to retrieve it again (not sure if this will make a difference)
+ * - Store creep's current work move/action target so they don't have to re-search for it every tick
  */
 
 // misc

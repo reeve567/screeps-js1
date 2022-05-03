@@ -136,7 +136,6 @@ var roles = {
 			) {
 				let source = Game.getObjectById(sourceMem.source);
 				let ret = creep.harvest(source);
-				console.log(ret);
 			} else {
 				let ret = creep.moveTo(
 					sourceMem.bestPosition.x,
@@ -160,7 +159,7 @@ var roles = {
 				let room = Game.rooms[creep.memory.home];
 
 				let spawns = room.find(FIND_MY_STRUCTURES, {
-					filter: function (structures) {
+					filter: function (structure) {
 						return (
 							structure instanceof StructureSpawn &&
 							structure.store.energy <
@@ -170,7 +169,7 @@ var roles = {
 				});
 
 				if (spawns.length > 0) {
-					let res = creep.transfer(spawns[0]);
+					let res = creep.transfer(spawns[0], RESOURCE_ENERGY);
 					if (res == ERR_NOT_IN_RANGE) {
 						creep.moveTo(spawns[0], RESOURCE_ENERGY);
 					} else if (res == ERR_NOT_ENOUGH_ENERGY) {
@@ -190,7 +189,7 @@ var roles = {
 				});
 
 				if (extensions.length > 0) {
-					let res = creep.transfer(extensions[0]);
+					let res = creep.transfer(extensions[0], RESOURCE_ENERGY);
 					if (res == ERR_NOT_IN_RANGE) {
 						creep.moveTo(extensions[0], RESOURCE_ENERGY);
 					} else if (res == ERR_NOT_ENOUGH_ENERGY) {
@@ -199,6 +198,7 @@ var roles = {
 					return;
 				}
 			} else if (creep.memory.workPhase == 0) {
+				// fix so they wont try and mine energy themselves
 				getEnergy(creep);
 			}
 		},
@@ -218,6 +218,50 @@ var roles = {
 		run: function (creep) {
 			if (creep.memory.workPhase == 1) {
 				var room = Game.rooms[creep.memory.home];
+
+				// TODO: don't leave this temporary fix for incase there are no transporters
+
+				let spawns = room.find(FIND_MY_STRUCTURES, {
+					filter: function (structure) {
+						return (
+							structure instanceof StructureSpawn &&
+							structure.store.energy <
+								structure.store.getCapacity(RESOURCE_ENERGY)
+						);
+					},
+				});
+
+				if (spawns.length > 0) {
+					let res = creep.transfer(spawns[0], RESOURCE_ENERGY);
+					if (res == ERR_NOT_IN_RANGE) {
+						creep.moveTo(spawns[0], RESOURCE_ENERGY);
+					} else if (res == ERR_NOT_ENOUGH_ENERGY) {
+						creep.memory.workPhase = 0;
+					}
+					return;
+				}
+
+				let extensions = room.find(FIND_MY_STRUCTURES, {
+					filter: function (structure) {
+						return (
+							structure instanceof StructureExtension &&
+							structure.store.energy <
+								structure.store.getCapacity(RESOURCE_ENERGY)
+						);
+					},
+				});
+
+				if (extensions.length > 0) {
+					let res = creep.transfer(extensions[0], RESOURCE_ENERGY);
+					if (res == ERR_NOT_IN_RANGE) {
+						creep.moveTo(extensions[0], RESOURCE_ENERGY);
+					} else if (res == ERR_NOT_ENOUGH_ENERGY) {
+						creep.memory.workPhase = 0;
+					}
+					return;
+				}
+
+				// END FIX -----------------
 
 				var result = creep.upgradeController(room.controller);
 				if (result == ERR_NOT_IN_RANGE) {
@@ -267,8 +311,6 @@ var roles = {
 							}
 						}
 
-						console.log(JSON.stringify(max));
-
 						for (let i in buildPriority) {
 							let type = buildPriority[i];
 
@@ -287,9 +329,6 @@ var roles = {
 									);
 								},
 							}).length;
-
-							console.log(type);
-							console.log(res);
 
 							if (res < max[type]) {
 								let newProjPos =
@@ -322,8 +361,6 @@ var roles = {
 													constructionSite.id;
 											}
 										}
-									} else {
-										console.log(ret);
 									}
 
 									break;
@@ -523,7 +560,6 @@ function createCreeps() {
 					name + "-" + Game.time / 100,
 					{
 						memory: {
-							spawning: true,
 							role: name,
 							workPhase: 0,
 							home: room.name,
@@ -552,8 +588,6 @@ function createCreeps() {
 function runCreeps() {
 	for (var name in Game.creeps) {
 		var creep = Game.creeps[name];
-
-		if (creep.memory.spawning) creep.memory.spawning = false;
 
 		var role = roles[creep.memory.role];
 		role.run(creep);
