@@ -157,6 +157,7 @@ function createRoomPlan(roomName) {
 	let containers = [];
 	let extensions = [];
 	let towers = [];
+	let roads = [];
 
 	// Better way to do the roads to sources once it's affordable:
 	// CostMatrix for all tiles, letting the walls be included with a higher cost
@@ -221,24 +222,25 @@ function createRoomPlan(roomName) {
 
 	// bunker area
 	// TODO: deal with smaller areas that wont fit a 5x5
-	for (let x = -2; x <= 2; x++) {
-		for (let y = -2; y <= 2; y++) {
-			if (Math.abs(x - y) == 1) {
-				extensions.push(
-					new RoomPosition(center.x + x, center.y + y, roomName)
-				);
-			}
+	for (let x = -3; x <= 3; x++) {
+		for (let y = -3; y <= 3; y++) {
+			let pos = new RoomPosition(center.x + x, center.y + y, roomName);
+			if (Math.abs(x) < 3 && Math.abs(y) < 3) {
+				if (Math.abs(Math.abs(x) - Math.abs(y)) == 1) {
+					extensions.push(pos);
+				}
 
-			if (Math.abs(x) == 2 && y == 0) {
-				containers.push(
-					new RoomPosition(center.x + x, center.y, roomName)
-				);
-			}
+				if (Math.abs(x) == 2 && y == 0) {
+					containers.push(pos);
+				}
 
-			if (Math.abs(x) == 2 && Math.abs(y) == 2) {
-				towers.push(
-					new RoomPosition(center.x + x, center.y + y, roomName)
-				);
+				if (Math.abs(x) == 2 && Math.abs(y) == 2) {
+					towers.push(pos);
+				}
+			} else {
+				if ((Math.abs(x) == 3) ^ (Math.abs(y) == 3)) {
+					roads.push(pos);
+				}
 			}
 		}
 	}
@@ -251,12 +253,60 @@ function createRoomPlan(roomName) {
 		sourceSpots: sourceSpots,
 		dt: dt,
 		buildings: {
-			links: links,
+			roads: roads,
 			extensions: extensions,
 			containers: containers,
 			towers: towers,
+			links: links,
 		},
 	};
+}
+
+function runTowers(roomName) {
+	let room = Game.rooms[roomName];
+
+	if (Game.time % 100 == 0) {
+		delete room.memory.towers;
+	}
+
+	let towers = room.memory.towers;
+
+	if (towers == undefined) {
+		towers = room.find(FIND_MY_STRUCTURES, {
+			filter: function (structure) {
+				return structure.structureType == STRUCTURE_TOWER;
+			},
+		});
+	}
+
+	for (let t in towers) {
+		let tower = towers[t];
+
+		let hostileCreeps = tower.pos.findClosestByRange(FIND_CREEPS, {
+			filter: function (creep) {
+				return (
+					!creep.my &&
+					(creep.body.includes(ATTACK) ||
+						creep.body.includes(RANGED_ATTACK) ||
+						creep.body.includes(HEAL))
+				);
+			},
+		});
+
+		if (hostileCreeps.length > 0) {
+			tower.attack(hostileCreeps[0]);
+		}
+
+		let buildings = room.find(FIND_MY_STRUCTURES, {
+			filter: function (structure) {
+				return structure.hits < structure.hitsMax - 400;
+			},
+		});
+
+		if (buildings.length > 0) {
+			tower.repair(buildings[0]);
+		}
+	}
 }
 
 module.exports = {

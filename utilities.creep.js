@@ -78,3 +78,36 @@ module.exports.findEnergy = function (creep) {
 
 	return ret;
 };
+
+module.exports.depositEnergy = function (creep) {
+	let room = Game.rooms[creep.memory.home];
+
+	function depoTo(type) {
+		let buildings = room.find(FIND_MY_STRUCTURES, {
+			filter: function (structure) {
+				return (
+					structure.structureType == type &&
+					structure.store.energy <
+						structure.store.getCapacity(RESOURCE_ENERGY)
+				);
+			},
+		});
+
+		if (buildings.length > 0) {
+			let res = creep.transfer(spawns[0], RESOURCE_ENERGY);
+			if (res == ERR_NOT_IN_RANGE) {
+				creep.moveTo(spawns[0], RESOURCE_ENERGY);
+			} else if (res == ERR_NOT_ENOUGH_ENERGY) {
+				creep.memory.workPhase = 0;
+			}
+
+			return true;
+		}
+		return false;
+	}
+
+	if (depoTo(STRUCTURE_SPAWN)) return;
+	if (depoTo(STRUCTURE_EXTENSION)) return;
+	if (depoTo(STRUCTURE_TOWER)) return;
+	if (depoTo(STRUCTURE_CONTAINER)) return;
+};
