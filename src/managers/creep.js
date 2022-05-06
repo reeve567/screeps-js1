@@ -1,79 +1,6 @@
-var creepUtilities = require("utilities.creep");
-var roomUtilities = require("utilities.room");
-
-var buildPriority = [
-	"roads",
-	"extensions",
-	"containers",
-	"towers",
-	"links",
-	"storage",
-	"spawns",
-];
-
-var buildingListMap = {
-	containers: STRUCTURE_CONTAINER,
-	extensions: STRUCTURE_EXTENSION,
-	towers: STRUCTURE_TOWER,
-	storage: STRUCTURE_STORAGE,
-	links: STRUCTURE_LINK,
-	extractor: STRUCTURE_EXTRACTOR,
-	labs: STRUCTURE_LAB,
-	terminal: STRUCTURE_TERMINAL,
-	factory: STRUCTURE_FACTORY,
-	observer: STRUCTURE_OBSERVER,
-	power_spawn: STRUCTURE_POWER_SPAWN,
-	nuker: STRUCTURE_NUKER,
-};
-
-var controllerBuildings = {
-	1: {
-		containers: 5,
-		spawns: 1,
-	},
-	2: {
-		extensions: 5,
-	},
-	3: {
-		extensions: 10,
-		towers: 1,
-	},
-	4: {
-		extensions: 20,
-		towers: 1,
-		storage: 1,
-	},
-	5: {
-		extensions: 30,
-		towers: 2,
-		links: 2,
-	},
-	6: {
-		extensions: 40,
-		links: 3,
-		extractor: 1,
-		labs: 3,
-		terminal: 1,
-	},
-	7: {
-		spawns: 2,
-		extensions: 50,
-		towers: 3,
-		links: 4,
-		labs: 6,
-		factory: 1,
-	},
-	8: {
-		spawns: 3,
-		extensions: 60,
-		towers: 6,
-		links: 6,
-		labs: 10,
-		observer: 1,
-		power_spawn: 1,
-		nuker: 1,
-	},
-};
+require("../constants");
+var creepUtilities = require("utilities/creep");
+var roomUtilities = require("utilities/room");
 
 // TODO: Make the MOBILE_HARVESTER actually work for Controller level 2, and also make the static only start on Controller 3
 var roles = {
@@ -131,17 +58,11 @@ var roles = {
 
 			let sourceMem = room.memory.sources[creep.memory.source];
 
-			if (
-				creep.pos.x == sourceMem.bestPosition.x &&
-				creep.pos.y == sourceMem.bestPosition.y
-			) {
+			if (creep.pos.x == sourceMem.bestPosition.x && creep.pos.y == sourceMem.bestPosition.y) {
 				let source = Game.getObjectById(sourceMem.source);
 				let ret = creep.harvest(source);
 			} else {
-				let ret = creep.moveTo(
-					sourceMem.bestPosition.x,
-					sourceMem.bestPosition.y
-				);
+				let ret = creep.moveTo(sourceMem.bestPosition.x, sourceMem.bestPosition.y);
 			}
 		},
 		bodyType: [MOVE, WORK],
@@ -180,57 +101,7 @@ var roles = {
 
 				// TODO: make fix for when there are no transporters
 
-				if (creep.memory.workPhase == 1) {
-					let room = Game.rooms[creep.memory.home];
-
-					let spawns = room.find(FIND_MY_STRUCTURES, {
-						filter: function (structure) {
-							return (
-								structure instanceof StructureSpawn &&
-								structure.store.energy <
-									structure.store.getCapacity(RESOURCE_ENERGY)
-							);
-						},
-					});
-
-					if (spawns.length > 0) {
-						let res = creep.transfer(spawns[0], RESOURCE_ENERGY);
-						if (res == ERR_NOT_IN_RANGE) {
-							creep.moveTo(spawns[0], RESOURCE_ENERGY);
-						} else if (res == ERR_NOT_ENOUGH_ENERGY) {
-							creep.memory.workPhase = 0;
-						} else {
-							console.log(res);
-						}
-						return;
-					}
-
-					let extensions = room.find(FIND_MY_STRUCTURES, {
-						filter: function (structure) {
-							return (
-								structure instanceof StructureExtension &&
-								structure.store.energy <
-									structure.store.getCapacity(RESOURCE_ENERGY)
-							);
-						},
-					});
-
-					if (extensions.length > 0) {
-						let res = creep.transfer(
-							extensions[0],
-							RESOURCE_ENERGY
-						);
-						if (res == ERR_NOT_IN_RANGE) {
-							creep.moveTo(extensions[0], RESOURCE_ENERGY);
-						} else if (res == ERR_NOT_ENOUGH_ENERGY) {
-							creep.memory.workPhase = 0;
-						}
-						return;
-					}
-				} else if (creep.memory.workPhase == 0) {
-					// fix so they wont try and mine energy themselves
-					getEnergy(creep);
-				}
+				if (creepUtilities.depositEnergy(creep)) return;
 
 				// END FIX
 
@@ -257,16 +128,11 @@ var roles = {
 			if (creep.memory.workPhase == 1) {
 				var room = Game.rooms[creep.memory.home];
 
-				if (
-					creep.memory.project == undefined ||
-					creep.memory.project == null
-				) {
+				if (creep.memory.project == undefined || creep.memory.project == null) {
 					let res = creep.room.find(FIND_MY_CONSTRUCTION_SITES);
 
 					if (res.length == 0) {
-						let roomPlan = roomUtilities.getRoomPlan(
-							creep.room.name
-						);
+						let roomPlan = roomUtilities.getRoomPlan(creep.room.name);
 
 						let max = {};
 
@@ -276,8 +142,8 @@ var roles = {
 
 						for (let i = 1; i <= room.controller.level; i++) {
 							for (let type in roomPlan.buildings) {
-								if (controllerBuildings[i] != undefined) {
-									max = controllerBuildings[i];
+								if (controllerBuildings[i][type] != undefined) {
+									max[type] = controllerBuildings[i][type];
 								}
 							}
 						}
@@ -285,26 +151,32 @@ var roles = {
 						for (let i in buildPriority) {
 							let type = buildPriority[i];
 
-							let res = creep.room.find(FIND_MY_STRUCTURES, {
+							let structureType;
+
+							if (type == "roads") {
+								structureType = FIND_STRUCTURES;
+							} else if (type == "spawns") {
+								structureType = FIND_MY_STRUCTURES;
+
+								// delete original dumb spawn placement
+
+								if (Game.spawns["Spawn1"] != undefined) {
+								}
+							} else {
+								structureType = FIND_MY_STRUCTURES;
+							}
+
+							let res = creep.room.find(structureType, {
 								filter: function (structure) {
-									return (
-										structure.structureType ==
-										buildingListMap[type]
-									);
+									return structure.structureType == buildingListMap[type];
 								},
 							}).length;
 
 							res += creep.room.find(FIND_MY_CONSTRUCTION_SITES, {
 								filter: function (structure) {
-									return (
-										structure.structureType ==
-										buildingListMap[type]
-									);
+									return structure.structureType == buildingListMap[type];
 								},
 							}).length;
-
-							console.log(type);
-							console.log(res + " < " + max[type]);
 
 							if (res < max[type]) {
 								let newProjPos = roomPlan.buildings[type][res];
@@ -329,15 +201,10 @@ var roles = {
 										);
 
 										for (let i in constructionSites) {
-											let constructionSite =
-												constructionSites[i];
+											let constructionSite = constructionSites[i];
 
-											if (
-												constructionSite.type ==
-												buildingListMap[type]
-											) {
-												creep.memory.project =
-													constructionSite.id;
+											if (constructionSite.type == buildingListMap[type]) {
+												creep.memory.project = constructionSite.id;
 											}
 										}
 									}
@@ -412,15 +279,6 @@ var roles = {
 	},
 };
 
-var priorities = [
-	"MELEE_DEFENDER",
-	"STATIC_HARVESTER",
-	"TRANSPORTER",
-	"MOBILE_HARVESTER",
-	"UPGRADER",
-	"BUILDER",
-];
-
 function getEnergy(creep) {
 	let find = creepUtilities.findEnergy(creep);
 
@@ -436,10 +294,7 @@ function getEnergy(creep) {
 			if (result == ERR_NOT_IN_RANGE) {
 				creep.moveTo(find);
 			} else if (result == OK) {
-				if (
-					creep.store.energy ==
-					creep.store.getCapacity(RESOURCE_ENERGY)
-				) {
+				if (creep.store.energy == creep.store.getCapacity(RESOURCE_ENERGY)) {
 					creep.memory.workPhase = 1;
 				}
 			}
@@ -451,10 +306,7 @@ function getEnergy(creep) {
 			} else if (result == ERR_FULL) {
 				creep.memory.workPhase = 1;
 			} else if (result == OK) {
-				if (
-					creep.store.energy ==
-					creep.store.getCapacity(RESOURCE_ENERGY)
-				) {
+				if (creep.store.energy == creep.store.getCapacity(RESOURCE_ENERGY)) {
 					creep.memory.workPhase = 1;
 				}
 			}
@@ -466,9 +318,7 @@ function getEnergy(creep) {
 		if (result == ERR_NOT_IN_RANGE) {
 			creep.moveTo(source);
 		} else if (result == OK) {
-			if (
-				creep.store.energy == creep.store.getCapacity(RESOURCE_ENERGY)
-			) {
+			if (creep.store.energy == creep.store.getCapacity(RESOURCE_ENERGY)) {
 				creep.memory.workPhase = 1;
 			}
 		}
@@ -493,9 +343,7 @@ function getCreepBody(role, spawn) {
 		if (role.specialBody.length == 0) {
 			amount = 0;
 		} else {
-			amount =
-				(spawn.room.energyCapacityAvailable - baseCost) /
-				creepUtilities.getCost(role.specialBody);
+			amount = (spawn.room.energyCapacityAvailable - baseCost) / creepUtilities.getCost(role.specialBody);
 		}
 
 		var body = role.bodyType;
@@ -519,8 +367,8 @@ function createCreeps() {
 			}
 		}
 
-		for (var i in priorities) {
-			var name = priorities[i];
+		for (var i in rolePriorities) {
+			var name = rolePriorities[i];
 			var role = roles[name];
 
 			if (role.count(room) > room.memory.roles[name]) {
@@ -539,17 +387,13 @@ function createCreeps() {
 
 				var body = getCreepBody(role, spawn);
 
-				var result = spawn.spawnCreep(
-					body,
-					name + "-" + Game.time / roomUtilities.spawnFrequency,
-					{
-						memory: {
-							role: name,
-							workPhase: 0,
-							home: room.name,
-						},
-					}
-				);
+				var result = spawn.spawnCreep(body, name + "-" + Game.time / spawnFrequency, {
+					memory: {
+						role: name,
+						workPhase: 0,
+						home: room.name,
+					},
+				});
 
 				room.visual.text(result, spawn.pos, {
 					color: "red",

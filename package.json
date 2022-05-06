@@ -1,0 +1,32 @@
+{
+	"name": "screeps-js1",
+	"version": "1.0.0",
+	"main": "main.js",
+	"scripts": {
+		"submit": "grunt"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/reeve567/screeps-js1.git"
+	},
+	"author": "",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/reeve567/screeps-js1/issues"
+	},
+	"homepage": "https://github.com/reeve567/screeps-js1#readme",
+	"description": "",
+	"devDependencies": {
+		"grunt": "^1.5.2",
+		"grunt-contrib-clean": "^2.0.1",
+		"grunt-contrib-copy": "^1.0.0",
+		"grunt-contrib-jshint": "^3.2.0",
+		"grunt-contrib-nodeunit": "^4.0.0",
+		"grunt-contrib-uglify": "^5.2.1",
+		"grunt-file-append": "^0.0.7",
+		"grunt-rsync": "^3.0.0"
+	},
+	"dependencies": {
+		"grunt-screeps": "^1.5.0"
+	}
+}

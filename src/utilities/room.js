@@ -100,11 +100,7 @@ function distanceTransform(roomName) {
 		for (let x = 49; x > 0; --x) {
 			if (topDownPass.get(x, y) > 2) {
 				let dist = room.controller.pos.findPathTo(x, y).length;
-				topDownPass.set(
-					x,
-					y,
-					Math.max(topDownPass.get(x, y) - Math.floor(dist / 15), 0)
-				);
+				topDownPass.set(x, y, Math.max(topDownPass.get(x, y) - Math.floor(dist / 15), 0));
 			}
 		}
 	}
@@ -141,8 +137,7 @@ function createRoomPlan(roomName) {
 		var pos = positions[i];
 		var roomPos = new RoomPosition(pos.x, pos.y, roomName);
 
-		var path = roomPos.findPathTo(Game.rooms[roomName].controller.pos)
-			.length;
+		var path = roomPos.findPathTo(Game.rooms[roomName].controller.pos).length;
 
 		if (path < distance) {
 			bestPosition = pos;
@@ -188,14 +183,9 @@ function createRoomPlan(roomName) {
 		for (let x = -1; x <= 1; x++) {
 			for (let y = -1; y <= 1; y++) {
 				if (x != 0 || y != 0) {
-					let minePos = new RoomPosition(
-						pos.x + x,
-						pos.y + y,
-						roomName
-					);
+					let minePos = new RoomPosition(pos.x + x, pos.y + y, roomName);
 
-					if (terrain.get(minePos.x, minePos.y) == TERRAIN_MASK_WALL)
-						continue;
+					if (terrain.get(minePos.x, minePos.y) == TERRAIN_MASK_WALL) continue;
 
 					let path = room.controller.pos.findPathTo(minePos);
 
@@ -286,14 +276,12 @@ function runTowers(roomName) {
 			filter: function (creep) {
 				return (
 					!creep.my &&
-					(creep.body.includes(ATTACK) ||
-						creep.body.includes(RANGED_ATTACK) ||
-						creep.body.includes(HEAL))
+					(creep.body.includes(ATTACK) || creep.body.includes(RANGED_ATTACK) || creep.body.includes(HEAL))
 				);
 			},
 		});
 
-		if (hostileCreeps.length > 0) {
+		if (hostileCreeps != null) {
 			tower.attack(hostileCreeps[0]);
 		}
 
@@ -303,7 +291,7 @@ function runTowers(roomName) {
 			},
 		});
 
-		if (buildings.length > 0) {
+		if (buildings != null) {
 			tower.repair(buildings[0]);
 		}
 	}
@@ -313,5 +301,5 @@ module.exports = {
 	getRoomPlan: getRoomPlan,
 	displayRoomPlan: displayRoomPlan,
 	createRoomPlan: createRoomPlan,
-	spawnFrequency: 25,
+	runTowers: runTowers,
 };

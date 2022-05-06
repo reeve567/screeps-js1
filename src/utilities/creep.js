@@ -94,9 +94,9 @@ module.exports.depositEnergy = function (creep) {
 		});
 
 		if (buildings.length > 0) {
-			let res = creep.transfer(spawns[0], RESOURCE_ENERGY);
+			let res = creep.transfer(buildings[0], RESOURCE_ENERGY);
 			if (res == ERR_NOT_IN_RANGE) {
-				creep.moveTo(spawns[0], RESOURCE_ENERGY);
+				creep.moveTo(buildings[0]);
 			} else if (res == ERR_NOT_ENOUGH_ENERGY) {
 				creep.memory.workPhase = 0;
 			}
@@ -106,8 +106,8 @@ module.exports.depositEnergy = function (creep) {
 		return false;
 	}
 
-	if (depoTo(STRUCTURE_SPAWN)) return;
-	if (depoTo(STRUCTURE_EXTENSION)) return;
-	if (depoTo(STRUCTURE_TOWER)) return;
-	if (depoTo(STRUCTURE_CONTAINER)) return;
+	if (depoTo(STRUCTURE_SPAWN)) return true;
+	if (depoTo(STRUCTURE_EXTENSION)) return true;
+	if (depoTo(STRUCTURE_TOWER)) return true;
+	if (depoTo(STRUCTURE_CONTAINER)) return true;
 };
