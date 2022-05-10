@@ -1,5 +1,25 @@
 var roomSize = 50;
 
+function getSourceMemory(room) {
+	if (room.memory.sources == undefined) {
+		room.memory.sources = [];
+		let roomPlan = roomUtilities.getRoomPlan(creep.memory.home);
+		let sourceSpots = roomPlan.sourceSpots;
+
+		for (let i in sourceSpots) {
+			let source = sourceSpots[i];
+
+			room.memory.sources.push({
+				owner: null,
+				source: source.id,
+				bestPosition: source.bestPosition,
+			});
+		}
+	}
+
+	return room.memory.sources;
+}
+
 function getRoomPlan(roomName) {
 	if (Memory.roomPlans == undefined) {
 		Memory.roomPlans = {};
@@ -162,16 +182,6 @@ function createRoomPlan(roomName) {
 	let sourceSpots = [];
 	let terrain = room.getTerrain();
 
-	// let cost = new PathFinder.CostMatrix();
-	//
-	// for (let x = 1; x < 50; x++) {
-	// 	for (let y = 1; y < 50; y++) {
-	// 		if (terrain.get(x, y) == TERRAIN_MASK_WALL) {
-	// 			cost.set(x, y, 4.0);
-	// 		}
-	// 	}
-	// }
-
 	for (let i in sources) {
 		let source = sources[i];
 		let pos = source.pos;
@@ -210,6 +220,8 @@ function createRoomPlan(roomName) {
 		});
 	}
 
+	let cost = new PathFinder.CostMatrix();
+
 	// bunker area
 	// TODO: deal with smaller areas that wont fit a 5x5
 	for (let x = -3; x <= 3; x++) {
@@ -218,6 +230,7 @@ function createRoomPlan(roomName) {
 			if (Math.abs(x) < 3 && Math.abs(y) < 3) {
 				if (Math.abs(Math.abs(x) - Math.abs(y)) == 1) {
 					extensions.push(pos);
+					cost.set(pos.x, pos.y, 255);
 				}
 
 				if (Math.abs(x) == 2 && y == 0) {
@@ -226,11 +239,35 @@ function createRoomPlan(roomName) {
 
 				if (Math.abs(x) == 2 && Math.abs(y) == 2) {
 					towers.push(pos);
+					cost.set(pos.x, pos.y, 255);
 				}
 			} else {
 				if ((Math.abs(x) == 3) ^ (Math.abs(y) == 3)) {
 					roads.push(pos);
+					cost.set(pos.x, pos.y, 1);
 				}
+
+				if (x == 0 && Math.abs(y) == 3) {
+					for (let y1 = 1; y1 <= 2; y1++) {
+						let pos1 = new RoomPosition(center.x, center.y + y + y1, roomName);
+						roads.push(pos1);
+						cost.set(pos.x, pos.y, 1);
+					}
+				} else if (y == 0 && Math.abs(x) == 3) {
+					for (let x1 = 1; x1 <= 2; x1++) {
+						let pos1 = new RoomPosition(center.x + x + x1, center.y, roomName);
+						roads.push(pos1);
+						cost.set(pos.x, pos.y, 1);
+					}
+				}
+			}
+		}
+	}
+
+	for (let x = 1; x < 50; x++) {
+		for (let y = 1; y < 50; y++) {
+			if (terrain.get(x, y) == TERRAIN_MASK_WALL) {
+				cost.set(x, y, 4);
 			}
 		}
 	}
@@ -242,6 +279,10 @@ function createRoomPlan(roomName) {
 		},
 		sourceSpots: sourceSpots,
 		dt: dt,
+		bunkerInfo: {
+			roadCount: roads.length,
+		},
+		costMatrix: cost.serialize(),
 		buildings: {
 			roads: roads,
 			extensions: extensions,
@@ -267,31 +308,43 @@ function runTowers(roomName) {
 				return structure.structureType == STRUCTURE_TOWER;
 			},
 		});
+
+		towers = _.map(towers, function (t) {
+			return t.id;
+		});
+
+		room.memory.towers = towers;
 	}
 
 	for (let t in towers) {
-		let tower = towers[t];
+		let towerId = towers[t];
 
-		let hostileCreeps = tower.pos.findClosestByRange(FIND_CREEPS, {
+		let tower = Game.getObjectById(towerId);
+
+		let hostileCreep = tower.pos.findClosestByRange(FIND_HOSTILE_CREEPS, {
 			filter: function (creep) {
+				return _.some(creep.body, (y) => [ATTACK, WORK, RANGED_ATTACK, CARRY].includes(y.type));
+			},
+		});
+
+		if (hostileCreep != null) {
+			if (Memory.enemies == undefined) Memory.enemies = [];
+
+			if (_.find(Memory.enemies, hostileCreep.owner) == 0) Memory.enemies.push(hostileCreep.owner);
+
+			tower.attack(hostileCreep);
+		}
+
+		let buildings = room.find(FIND_STRUCTURES, {
+			filter: function (structure) {
 				return (
-					!creep.my &&
-					(creep.body.includes(ATTACK) || creep.body.includes(RANGED_ATTACK) || creep.body.includes(HEAL))
+					(structure.structureType == STRUCTURE_ROAD || structure.my) &&
+					structure.hits < structure.hitsMax - 400
 				);
 			},
 		});
 
-		if (hostileCreeps != null) {
-			tower.attack(hostileCreeps[0]);
-		}
-
-		let buildings = room.find(FIND_MY_STRUCTURES, {
-			filter: function (structure) {
-				return structure.hits < structure.hitsMax - 400;
-			},
-		});
-
-		if (buildings != null) {
+		if (buildings.length != 0) {
 			tower.repair(buildings[0]);
 		}
 	}

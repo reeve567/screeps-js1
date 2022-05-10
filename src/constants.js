@@ -4,9 +4,9 @@ global.spawnFrequency = 25;
 // Creep settings
 global.rolePriorities = [
 	"MELEE_DEFENDER",
+	"MOBILE_HARVESTER",
 	"STATIC_HARVESTER",
 	"TRANSPORTER",
-	"MOBILE_HARVESTER",
 	"UPGRADER",
 	"BUILDER",
 ];
@@ -30,6 +30,7 @@ global.buildingListMap = {
 	nuker: STRUCTURE_NUKER,
 };
 
+// convert to CONTROLLER_STRUCTURES
 global.controllerBuildings = {
 	1: {
 		roads: 2500,

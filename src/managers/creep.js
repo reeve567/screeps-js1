@@ -7,20 +7,20 @@ var roles = {
 	// Mines energy, then puts it in some kind of storage
 	MOBILE_HARVESTER: {
 		run: function (creep) {
-			if (creep.memory.workPhase == 0) {
+			if (creep.memory.workPhase == 1) {
+				if (creepUtilities.depositEnergy(creep)) return;
+			} else if (creep.memory.workPhase == 0) {
+				getEnergy(creep);
 			}
 		},
 		bodyType: [MOVE, CARRY, WORK],
+		specialBody: [],
 		count: function (room) {
-			// if (room.controller.level == 1) {
-			// 	return 2;
-			// } else if (
-			// 	room.memory.roles["TRANSPORTER"] == 0 &&
-			// 	room.memory.roles["STATIC_HARVESTER"] == 0
-			// ) {
-			// 	return 1;
-			// }
-			return 0;
+			if (room.controller.level == 1) {
+				return 2;
+			} else if (room.memory.roles["TRANSPORTER"] == 0 || room.memory.roles["STATIC_HARVESTER"] == 0) {
+				return 2;
+			}
 		},
 	},
 	// Stays at a source to mine, dropping energy on the floor or in a storage at their body
@@ -172,16 +172,20 @@ var roles = {
 								},
 							}).length;
 
-							res += creep.room.find(FIND_MY_CONSTRUCTION_SITES, {
-								filter: function (structure) {
-									return structure.structureType == buildingListMap[type];
-								},
-							}).length;
-
 							if (res < max[type]) {
-								let newProjPos = roomPlan.buildings[type][res];
+								if (
+									type == "roads" &&
+									res == roomPlan.bunkerInfo.roadCount &&
+									roomPlan.buildings.roads.length == roomPlan.bunkerInfo.roadCount
+								) {
+									// TODO: build roads from sources including CostMatrix for walls & roads
+									//for (let source in )
+									let cost = PathFinder.CostMatrix.deserialize(roomPlan.costMatrix);
 
-								console.log(JSON.stringify(newProjPos));
+									PathFinder.search();
+								}
+
+								let newProjPos = roomPlan.buildings[type][res];
 
 								if (newProjPos != undefined) {
 									let ret = creep.room.createConstructionSite(
@@ -190,8 +194,6 @@ var roles = {
 										buildingListMap[type],
 										type + "-" + res
 									);
-
-									console.log(ret);
 
 									if (ret == OK) {
 										let constructionSites = creep.room.lookForAt(
@@ -421,6 +423,11 @@ function runCreeps() {
 		var creep = Game.creeps[name];
 
 		var role = roles[creep.memory.role];
+
+		if (role == undefined) {
+			console.log("Error, undefined role: " + JSON.stringify(creep));
+		}
+
 		role.run(creep);
 	}
 }
