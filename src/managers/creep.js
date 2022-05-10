@@ -173,18 +173,6 @@ var roles = {
 							}).length;
 
 							if (res < max[type]) {
-								if (
-									type == "roads" &&
-									res == roomPlan.bunkerInfo.roadCount &&
-									roomPlan.buildings.roads.length == roomPlan.bunkerInfo.roadCount
-								) {
-									// TODO: build roads from sources including CostMatrix for walls & roads
-									//for (let source in )
-									let cost = PathFinder.CostMatrix.deserialize(roomPlan.costMatrix);
-
-									PathFinder.search();
-								}
-
 								let newProjPos = roomPlan.buildings[type][res];
 
 								if (newProjPos != undefined) {

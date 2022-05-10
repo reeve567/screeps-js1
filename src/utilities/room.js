@@ -61,6 +61,11 @@ function displayRoomPlan(roomName, display = true) {
 		color: "blue",
 	});
 
+	vis.poly(roomPlan.buildings.controllerRoad, {
+		stroke: "#efe",
+		strokeWidth: 0.2,
+	});
+
 	for (let i in roomPlan.sourceSpots) {
 		let sourceSpot = roomPlan.sourceSpots[i];
 
@@ -165,7 +170,22 @@ function createRoomPlan(roomName) {
 		}
 	}
 
+	let room = Game.rooms[roomName];
+	let terrain = room.getTerrain();
+
 	// start figuring out where buildings go
+
+	// cost matrix for where paths will go eventually
+	let cost = new PathFinder.CostMatrix();
+
+	// start with adding in wall costs
+	for (let x = 1; x < 50; x++) {
+		for (let y = 1; y < 50; y++) {
+			if (terrain.get(x, y) == TERRAIN_MASK_WALL) {
+				cost.set(x, y, 4);
+			}
+		}
+	}
 
 	let links = [new RoomPosition(bestPosition.x, bestPosition.y, roomName)];
 	let center = links[0];
@@ -174,13 +194,75 @@ function createRoomPlan(roomName) {
 	let towers = [];
 	let roads = [];
 
-	// Better way to do the roads to sources once it's affordable:
-	// CostMatrix for all tiles, letting the walls be included with a higher cost
+	// bunker area
+	// TODO: deal with smaller areas that wont fit a 5x5
+	for (let x = -3; x <= 3; x++) {
+		for (let y = -3; y <= 3; y++) {
+			let pos = new RoomPosition(center.x + x, center.y + y, roomName);
+			if (Math.abs(x) < 3 && Math.abs(y) < 3) {
+				if (Math.abs(Math.abs(x) - Math.abs(y)) == 1) {
+					extensions.push(pos);
+					cost.set(pos.x, pos.y, 0xff);
+				}
 
-	let room = Game.rooms[roomName];
+				if (Math.abs(x) == 2 && y == 0) {
+					containers.push(pos);
+					cost.set(pos.x, pos.y, 0xff);
+				}
+
+				if (Math.abs(x) == 2 && Math.abs(y) == 2) {
+					towers.push(pos);
+					cost.set(pos.x, pos.y, 0xff);
+				}
+			} else {
+				if ((Math.abs(x) == 3) ^ (Math.abs(y) == 3)) {
+					roads.push(pos);
+					cost.set(pos.x, pos.y, 1);
+				}
+
+				if (x == 0 && Math.abs(y) == 3) {
+					for (let y1 = 1; y1 <= 2; y1++) {
+						let pos1 = new RoomPosition(center.x, center.y + y + y1, roomName);
+						roads.push(pos1);
+						cost.set(pos1.x, pos1.y, 1);
+					}
+				} else if (y == 0 && Math.abs(x) == 3) {
+					for (let x1 = 1; x1 <= 2; x1++) {
+						let pos1 = new RoomPosition(center.x + x + x1, center.y, roomName);
+						roads.push(pos1);
+						cost.set(pos1.x, pos1.y, 1);
+					}
+				}
+			}
+		}
+	}
+
+	// add cost for controller road
+	let controllerPathRet = PathFinder.search(
+		room.controller.pos,
+		{ pos: center, range: 3 },
+		{
+			plainCost: 2,
+			swampCost: 2,
+			maxRooms: 1,
+			roomCallback: function (_) {
+				return cost;
+			},
+		}
+	);
+
+	let controllerPath = [];
+	for (i in controllerPathRet.path) {
+		let pos = controllerPathRet.path[i];
+		if (cost.get(pos.x, pos.y) != 1) {
+			controllerPath.push(pos);
+			cost.set(pos.x, pos.y, 1);
+		}
+	}
+	// do all the stuff for the sources
+
 	let sources = room.find(FIND_SOURCES);
 	let sourceSpots = [];
-	let terrain = room.getTerrain();
 
 	for (let i in sources) {
 		let source = sources[i];
@@ -197,7 +279,23 @@ function createRoomPlan(roomName) {
 
 					if (terrain.get(minePos.x, minePos.y) == TERRAIN_MASK_WALL) continue;
 
-					let path = room.controller.pos.findPathTo(minePos);
+					let ret = PathFinder.search(
+						minePos,
+						{
+							pos: center,
+							range: 3,
+						},
+						{
+							plainCost: 2,
+							swampCost: 2,
+							maxRooms: 1,
+							roomCallback: function (_) {
+								return cost;
+							},
+						}
+					);
+
+					let path = ret.path;
 
 					let dist = path.length;
 
@@ -220,58 +318,6 @@ function createRoomPlan(roomName) {
 		});
 	}
 
-	let cost = new PathFinder.CostMatrix();
-
-	// bunker area
-	// TODO: deal with smaller areas that wont fit a 5x5
-	for (let x = -3; x <= 3; x++) {
-		for (let y = -3; y <= 3; y++) {
-			let pos = new RoomPosition(center.x + x, center.y + y, roomName);
-			if (Math.abs(x) < 3 && Math.abs(y) < 3) {
-				if (Math.abs(Math.abs(x) - Math.abs(y)) == 1) {
-					extensions.push(pos);
-					cost.set(pos.x, pos.y, 255);
-				}
-
-				if (Math.abs(x) == 2 && y == 0) {
-					containers.push(pos);
-				}
-
-				if (Math.abs(x) == 2 && Math.abs(y) == 2) {
-					towers.push(pos);
-					cost.set(pos.x, pos.y, 255);
-				}
-			} else {
-				if ((Math.abs(x) == 3) ^ (Math.abs(y) == 3)) {
-					roads.push(pos);
-					cost.set(pos.x, pos.y, 1);
-				}
-
-				if (x == 0 && Math.abs(y) == 3) {
-					for (let y1 = 1; y1 <= 2; y1++) {
-						let pos1 = new RoomPosition(center.x, center.y + y + y1, roomName);
-						roads.push(pos1);
-						cost.set(pos.x, pos.y, 1);
-					}
-				} else if (y == 0 && Math.abs(x) == 3) {
-					for (let x1 = 1; x1 <= 2; x1++) {
-						let pos1 = new RoomPosition(center.x + x + x1, center.y, roomName);
-						roads.push(pos1);
-						cost.set(pos.x, pos.y, 1);
-					}
-				}
-			}
-		}
-	}
-
-	for (let x = 1; x < 50; x++) {
-		for (let y = 1; y < 50; y++) {
-			if (terrain.get(x, y) == TERRAIN_MASK_WALL) {
-				cost.set(x, y, 4);
-			}
-		}
-	}
-
 	return {
 		bestSpot: {
 			pos: center,
@@ -285,6 +331,7 @@ function createRoomPlan(roomName) {
 		costMatrix: cost.serialize(),
 		buildings: {
 			roads: roads,
+			controllerRoad: controllerPath,
 			extensions: extensions,
 			containers: containers,
 			towers: towers,
@@ -330,7 +377,10 @@ function runTowers(roomName) {
 		if (hostileCreep != null) {
 			if (Memory.enemies == undefined) Memory.enemies = [];
 
-			if (_.find(Memory.enemies, hostileCreep.owner) == undefined) Memory.enemies.push(hostileCreep.owner);
+			if (_.find(Memory.enemies, (e) => e == hostileCreep.owner.username) == undefined) {
+				Memory.enemies.push(hostileCreep.owner.username);
+				Game.notify("New enemy detected: " + hostileCreep.owner.username);
+			}
 
 			tower.attack(hostileCreep);
 		}

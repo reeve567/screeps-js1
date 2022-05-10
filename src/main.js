@@ -7,7 +7,6 @@
 /*
  * Possible additions
  * - Need to add in the roads for the harvesters and whatnot, once the main 20 roads around the bunker is done
- * - Disater recovery - Make sure that even after adding extensions, if everyone is dead, don't use them all, instead only use the spawn energy
  * - Remote harvesting - Bottom room especially looks nice
  * - Max work - Static harvesters will get all energy available with 5 work parts, that needs to be implemented, as well as any others.
  */
@@ -42,8 +41,6 @@ module.exports.loop = function () {
 	// 2. Spawns (Life & Death)
 	// 3. Towers
 	// 4. Room plan
-
-	Memory.creepIn = spawnFrequency - (Game.time % spawnFrequency);
 
 	roomManager.runVisuals();
 

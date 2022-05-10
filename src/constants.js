@@ -12,10 +12,11 @@ global.rolePriorities = [
 ];
 
 // Building settings
-global.buildPriority = ["roads", "extensions", "containers", "towers", "links", "storage", "spawns"];
+global.buildPriority = ["roads", "controllerRoad", "extensions", "containers", "towers", "links", "storage", "spawns"];
 
 global.buildingListMap = {
 	roads: STRUCTURE_ROAD,
+	controllerRoad: STRUCTURE_ROAD,
 	containers: STRUCTURE_CONTAINER,
 	extensions: STRUCTURE_EXTENSION,
 	towers: STRUCTURE_TOWER,
