@@ -330,7 +330,7 @@ function runTowers(roomName) {
 		if (hostileCreep != null) {
 			if (Memory.enemies == undefined) Memory.enemies = [];
 
-			if (_.find(Memory.enemies, hostileCreep.owner) == 0) Memory.enemies.push(hostileCreep.owner);
+			if (_.find(Memory.enemies, hostileCreep.owner) == undefined) Memory.enemies.push(hostileCreep.owner);
 
 			tower.attack(hostileCreep);
 		}
