@@ -18,7 +18,7 @@ module.exports.clearDeadCreeps = function () {
 			var role = mem.role;
 			room.memory.roles[role]--;
 
-			if (role == "STATIC_HARVESTER") {
+			if (role == "STATIC_HARVESTER" && mem.source != null && mem.source != undefined) {
 				room.memory.sources[mem.source].owner = null;
 			}
 
@@ -36,10 +36,7 @@ module.exports.findEnergy = function (creep) {
 	if (ret == null) {
 		let ret1 = creep.room.find(FIND_DROPPED_RESOURCES, {
 			filter: function (object) {
-				return (
-					object.resourceType == RESOURCE_ENERGY &&
-					object.amount > energyCap
-				);
+				return object.resourceType == RESOURCE_ENERGY && object.amount > energyCap;
 			},
 		});
 
@@ -58,10 +55,7 @@ module.exports.findEnergy = function (creep) {
 	if (ret == null) {
 		let ret1 = creep.room.find(FIND_STRUCTURES, {
 			filter: function (structure) {
-				return (
-					structure instanceof StructureContainer &&
-					structure.store.energy > energyCap
-				);
+				return structure instanceof StructureContainer && structure.store.energy > energyCap;
 			},
 		});
 
@@ -87,8 +81,7 @@ module.exports.depositEnergy = function (creep) {
 			filter: function (structure) {
 				return (
 					structure.structureType == type &&
-					structure.store.energy <
-						structure.store.getCapacity(RESOURCE_ENERGY)
+					structure.store.energy < structure.store.getCapacity(RESOURCE_ENERGY)
 				);
 			},
 		});

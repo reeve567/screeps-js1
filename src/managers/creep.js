@@ -9,6 +9,7 @@ var roles = {
 		run: function (creep) {
 			if (creep.memory.workPhase == 1) {
 				if (creepUtilities.depositEnergy(creep)) return;
+				else creep.say("I'm bored");
 			} else if (creep.memory.workPhase == 0) {
 				getEnergy(creep);
 			}
@@ -19,7 +20,7 @@ var roles = {
 			if (room.controller.level == 1) {
 				return 2;
 			} else if (room.memory.roles["TRANSPORTER"] == 0 || room.memory.roles["STATIC_HARVESTER"] == 0) {
-				return 2;
+				return 3;
 			}
 		},
 	},
