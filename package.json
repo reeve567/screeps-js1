@@ -24,7 +24,8 @@
 		"grunt-contrib-nodeunit": "^4.0.0",
 		"grunt-contrib-uglify": "^5.2.1",
 		"grunt-file-append": "^0.0.7",
-		"grunt-rsync": "^3.0.0"
+		"grunt-rsync": "^3.0.0",
+        "@types/screeps": "^3.3.0"
 	},
 	"dependencies": {
 		"grunt-screeps": "^1.5.0"
